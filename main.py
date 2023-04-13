@@ -15,14 +15,13 @@ if not os.path.exists(folder_path):
     os.makedirs(folder_path)
 # initialize frame and image counter
 frame_counter = 0
-img_counter = 0
 
 newFastener = True
-
 
 def empty(a):
     pass
 
+# Scroll bars for adjustments
 cv2.namedWindow("Parameters")
 cv2.resizeWindow("Parameters",640,240)
 cv2.createTrackbar("Threshold1","Parameters",50,255,empty)
@@ -35,33 +34,7 @@ cv2.createTrackbar("High S","Parameters",255,255,empty)
 cv2.createTrackbar("High V","Parameters",255,255,empty)
 cv2.createTrackbar("Area","Parameters",1000,30000,empty)
 
-def save_all_frames(x, dir_path, basename, ext='jpg'):
-
-    if not cap.isOpened():
-        return
-
-    os.makedirs(dir_path, exist_ok=True)
-    base_path = os.path.join(dir_path, basename)
-
-    digit = len(str(int(cap.get(cv2.CAP_PROP_FRAME_COUNT))))
-
-    n = 0
-
-    starttime = time.time()
-
-    # while True:
-    #     if x>=220 and x<=420:
-            # ret, frame = cap.read()
-            # print('pic!')
-            # time.sleep(60.0 - ((time.time() - starttime) % 60.0))
-            # if ret:
-            #     cv2.imwrite('{}_{}.{}'.format(base_path, str(n).zfill(digit), ext), frame)
-            #     n += 1
-            # else:
-            #     return
-        # else: 
-        #     return
-
+# For display
 def stackImages(scale,imgArray):
     rows = len(imgArray)
     cols = len(imgArray[0])
@@ -116,9 +89,10 @@ def getContours(img,imgContour):
                 cv2.rectangle(imgContour, (x , y ), (x + w , y + h ), (0, 255, 0), 5)
                 return contours, x, y, w, h
         #do something when contours is done because it will quit
+        return None #?
     else:
         # print("not found contours")
-        return False
+        return None
     # print("end of find contours")
 
 def removeBackground(imgBlur):
@@ -253,19 +227,16 @@ def screwOrBolt(img):
 
 while True:
     success, img = cap.read()
-    # increment frame counter
     frame_counter += 1
 
     imgContour = img.copy()
     imgRange = img.copy()
     imgResult = img.copy()
 
+    # Image Processing
     imgBlur = cv2.GaussianBlur(img, (7, 7), 1)
-
     imgNoBackground = removeBackground(imgBlur)
-
     imgGray = cv2.cvtColor(imgNoBackground, cv2.COLOR_BGR2GRAY)
-
     threshold1 = cv2.getTrackbarPos("Threshold1", "Parameters")
     threshold2 = cv2.getTrackbarPos("Threshold2", "Parameters")
     imgCanny = cv2.Canny(imgGray,threshold1,threshold2)
@@ -283,10 +254,6 @@ while True:
         cv2.rectangle(imgRange, (200 , 0 ), (420 , 480 ), (0, 255, 0), 5)
 
         # Run classification algorithms only when the fastner is in range
-        # if newFastner is False:
-        #     output_hist = plt.hist(fastner_type, bins='auto')
-
-        # Case if fastener is within the range we are looking at
         if x>=220 and x<=420:
             # Create a new list for collecting results only if the fastener has just entered
             if newFastener is True:
@@ -297,9 +264,9 @@ while True:
             if frame_counter % 1 == 0: #this camera is 7.50fps
             #     print("pic")
             #     filename = os.path.join(folder_path, f'image_{img_counter}.jpg')
+                # filename = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + '.jpg'
             #     # print("writing")
             #     cv2.imwrite(filename, img)
-            #     img_counter += 1
 
                 isWasherOrNut, fastener = washerOrNut(imgDil, contours, x, y, w, h)
 
@@ -333,11 +300,9 @@ while True:
 
             #next fastener that comes in the range is a new fastener
             newFastener = True 
-        # else:
-        #     print("out of range")
-        #QUESTION: Why does it quit?
+            #QUESTION: Why does it quit?
 
-    imgStack = stackImages(0.8, ([img, imgGray, imgCanny], [imgDil, imgContour, imgRange]))
+    imgStack = stackImages(0.8, ([img, imgGray, imgCanny], [imgRange, imgContour, imgResult]))
 
     cv2.imshow("Results", imgStack)
     if cv2.waitKey(1) & 0xFF == ord ('q'):
