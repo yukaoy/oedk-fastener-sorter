@@ -3,12 +3,22 @@ import os
 import numpy as np
 from matplotlib import pyplot as plt
 import time
+from collections import Counter
 
 frameWidth = 640
 frameHeight = 480
 cap = cv2.VideoCapture(0)
 cap.set(3, frameWidth)
 cap.set(4, frameHeight)
+folder_path = '/Users/yukaaoyama/engi200/images'
+if not os.path.exists(folder_path):
+    os.makedirs(folder_path)
+# initialize frame and image counter
+frame_counter = 0
+img_counter = 0
+
+newFastener = True
+
 
 def empty(a):
     pass
@@ -155,15 +165,18 @@ def washerOrNut(img, contours, x, y, w, h):
             peri = cv2.arcLength(c, True)
             approx = cv2.approxPolyDP(c, 0.04 * peri, True)
             if len(approx) == 6:
-                cv2.putText(imgContour, "Nut", (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, .7,
-                        (0, 255, 0), 2)
+                cv2.putText(imgContour, "Nut", (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, 1,
+                        (0, 0, 0), 2)
+                return True, 0
                 # print("Nut")
             else:
-                cv2.putText(imgContour, "Washer", (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, .7,
-                        (0, 255, 0), 2)
+                cv2.putText(imgContour, "Washer", (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, 1,
+                        (0, 0, 0), 2)
+                return True, 1
                 # print("Washer")
-        return True
-    # else:
+        # return True
+    else:
+        return None, -1
     #     return False
     
 
@@ -203,36 +216,49 @@ def screwOrBolt(img):
         # cv2.circle(imgCorner, second_min_coord, 3, 255, -1)
 
         #use slope
+        # Need to make sure slope is defined (undefined = vertical)
+        # if second_max_coord[0]-max_coord[0] == 0.0:
+
+        # if second_min_coord[0]-min_coord[0] == 0.0:
+            
         slope_max = (second_max_coord[1]-max_coord[1]) / (second_max_coord[0]-max_coord[0]) 
         slope_min = (second_min_coord[1]-min_coord[1]) / (second_min_coord[0]-min_coord[0]) 
 
         if slope_max == 0.0:
             if abs(slope_min) < 0.5:
-                cv2.putText(imgContour, "Bolt", (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, .7,
-                            (0, 255, 0), 2)
+                cv2.putText(imgContour, "Bolt", (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, 1,
+                            (0, 0, 0), 2)
+                return 3
                 # print("Bolt")
         elif slope_min == 0.0:
             if abs(slope_max) < 0.5:
-                cv2.putText(imgContour, "Bolt", (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, .7,
-                            (0, 255, 0), 2)
+                cv2.putText(imgContour, "Bolt", (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, 1,
+                            (0, 0, 0), 2)
+                return 3
                 # print("Bolt")
         else:
             #use ratio
             slope_ratio = abs(slope_max / slope_min)
             # print(slope_ratio)
             if 0.4 <= slope_ratio <= 2:
-                cv2.putText(imgContour, "Bolt", (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, .7,
-                            (0, 255, 0), 2)
+                cv2.putText(imgContour, "Bolt", (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, 1,
+                            (0, 0, 0), 2)
+                return 3
                 # print("Bolt")
             else:
-                cv2.putText(imgContour, "Screw", (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, .7,
-                            (0, 255, 0), 2)
+                cv2.putText(imgContour, "Screw", (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, 1,
+                            (0, 0, 0), 2)
+                return 4
                 # print("Screw")
 
 while True:
     success, img = cap.read()
+    # increment frame counter
+    frame_counter += 1
+
     imgContour = img.copy()
     imgRange = img.copy()
+    imgResult = img.copy()
 
     imgBlur = cv2.GaussianBlur(img, (7, 7), 1)
 
@@ -256,19 +282,60 @@ while True:
 
         cv2.rectangle(imgRange, (200 , 0 ), (420 , 480 ), (0, 255, 0), 5)
 
-        save_all_frames(x, '/Users/yukaaoyama/engi200/images', 'sample_img')
-
         # Run classification algorithms only when the fastner is in range
         # if newFastner is False:
         #     output_hist = plt.hist(fastner_type, bins='auto')
-        if x>=220 and x<=420:
-            isWasherOrNut = washerOrNut(imgDil, contours, x, y, w, h)
 
-            if isWasherOrNut is None:
-                screwOrBolt(imgDil)
+        # Case if fastener is within the range we are looking at
+        if x>=220 and x<=420:
+            # Create a new list for collecting results only if the fastener has just entered
+            if newFastener is True:
+                results = []
+            newFastener = False
+
+            # Save frame as image in specified folder
+            if frame_counter % 1 == 0: #this camera is 7.50fps
+            #     print("pic")
+            #     filename = os.path.join(folder_path, f'image_{img_counter}.jpg')
+            #     # print("writing")
+            #     cv2.imwrite(filename, img)
+            #     img_counter += 1
+
+                isWasherOrNut, fastener = washerOrNut(imgDil, contours, x, y, w, h)
+
+                if isWasherOrNut is None:
+                    fastener = screwOrBolt(imgDil)
+
+                if fastener is not None:
+                    results.append(fastener)
+                # print(results)
+
+        # Case if fastener is not within the range we are looking at (haven't looked at or finished looking at previous)
         else:
-            print("out of range")
-            #QUESTION: Why does it quit?
+            # Results from the previous one
+            final_result = ""
+            if newFastener is False:
+                counter = Counter(results)
+                majority = counter.most_common(1)
+                if majority[0][0] == 0:
+                    final_result = "Nut"
+                elif majority[0][0] == 1:
+                    final_result = "Washer"
+                elif majority[0][0] == 2:
+                    final_result = "Bolt"
+                elif majority[0][0] == 3:
+                    final_result = "Screw"
+
+            if final_result != "":
+                print(final_result)
+            cv2.putText(imgResult, final_result, (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, 1,
+                            (0, 0, 0), 2)
+
+            #next fastener that comes in the range is a new fastener
+            newFastener = True 
+        # else:
+        #     print("out of range")
+        #QUESTION: Why does it quit?
 
     imgStack = stackImages(0.8, ([img, imgGray, imgCanny], [imgDil, imgContour, imgRange]))
 
