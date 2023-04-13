@@ -84,7 +84,8 @@ def getContours(img,imgContour):
                 # print(len(approx))
                 x , y , w, h = cv2.boundingRect(approx)
                 # print(img[x:x+w, y:y+h])
-                cv2.imshow("Cropped", img[y-10:y+h+20, x-10:x+w+20])
+                # if img[y-10:y+h+20, x-10:x+w+20] is not None:
+                #     cv2.imshow("Cropped", img[y-10:y+h+20, x-10:x+w+20])
                 # print(x, y, w, h)
                 cv2.rectangle(imgContour, (x , y ), (x + w , y + h ), (0, 255, 0), 5)
                 return contours, x, y, w, h
@@ -125,7 +126,13 @@ def removeBackground(imgBlur):
 def washerOrNut(img, contours, x, y, w, h):
     # imgFastener = img.copy()
     # cv2.imshow("washer or nut", img[y-10:y+h+20, x-10:x+w+20])
-    detected_circles = cv2.HoughCircles(img[y-10:y+h+20, x-10:x+w+20], 
+    # print(x)
+    # print(y)
+    # print(w)
+    # print(h)
+    if x >= 10 and y >=10:
+        img = img[y-10:y+h+20, x-10:x+w+20]
+    detected_circles = cv2.HoughCircles(img, 
                    cv2.HOUGH_GRADIENT, 1, 0.01, param1 = 200,
                param2 = 20, minRadius = 8, maxRadius = 150)
 
@@ -155,7 +162,9 @@ def washerOrNut(img, contours, x, y, w, h):
     
 
 def screwOrBolt(img):
-    corners = cv2.goodFeaturesToTrack(img[y-10:y+h+20, x-10:x+w+20], 20, 0.01, 5, useHarrisDetector=True, k=0.01)
+    if x >= 10 and y >=10:
+        img = img[y-10:y+h+20, x-10:x+w+20]
+    corners = cv2.goodFeaturesToTrack(img, 20, 0.01, 5, useHarrisDetector=True, k=0.01)
     if corners is not None:
         corners = np.int0(corners) #float to integer
 
@@ -264,9 +273,13 @@ while True:
             if frame_counter % 1 == 0: #this camera is 7.50fps
             #     print("pic")
             #     filename = os.path.join(folder_path, f'image_{img_counter}.jpg')
-                # filename = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + '.jpg'
+            # time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                # filename = time + '.jpg'
             #     # print("writing")
             #     cv2.imwrite(filename, img)
+            #      file = open(time + '.txt', "w")
+            #   file.write("Hello, world!")
+                #file.close()
 
                 isWasherOrNut, fastener = washerOrNut(imgDil, contours, x, y, w, h)
 
@@ -282,16 +295,20 @@ while True:
             # Results from the previous one
             final_result = ""
             if newFastener is False:
+                # print('FALSE')
+                # print('RESULTS', results)
                 counter = Counter(results)
                 majority = counter.most_common(1)
-                if majority[0][0] == 0:
-                    final_result = "Nut"
-                elif majority[0][0] == 1:
-                    final_result = "Washer"
-                elif majority[0][0] == 2:
-                    final_result = "Bolt"
-                elif majority[0][0] == 3:
-                    final_result = "Screw"
+                # print("MAJORITY", majority)
+                if len(majority) != 0:
+                    if majority[0][0] == 0:
+                        final_result = "Nut"
+                    elif majority[0][0] == 1:
+                        final_result = "Washer"
+                    elif majority[0][0] == 2:
+                        final_result = "Bolt"
+                    elif majority[0][0] == 3:
+                        final_result = "Screw"
 
             if final_result != "":
                 print(final_result)
