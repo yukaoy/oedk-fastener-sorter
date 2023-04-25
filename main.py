@@ -4,13 +4,15 @@ import numpy as np
 from matplotlib import pyplot as plt
 import time
 from collections import Counter
+import datetime
+import math
 
 frameWidth = 640
 frameHeight = 480
 cap = cv2.VideoCapture(0)
 cap.set(3, frameWidth)
 cap.set(4, frameHeight)
-folder_path = '/Users/yukaaoyama/engi200/images'
+folder_path = '/Users/yukaaoyama/engi200/images/training'
 if not os.path.exists(folder_path):
     os.makedirs(folder_path)
 # initialize frame and image counter
@@ -144,7 +146,8 @@ def washerOrNut(img, contours, x, y, w, h):
         # cnts = cnts[0] if len(cnts) == 2 else cnts[1]
         for c in contours:
             peri = cv2.arcLength(c, True)
-            approx = cv2.approxPolyDP(c, 0.04 * peri, True)
+            approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+            # print(len(approx))
             if len(approx) == 6:
                 cv2.putText(imgContour, "Nut", (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, 1,
                         (0, 0, 0), 2)
@@ -164,7 +167,8 @@ def washerOrNut(img, contours, x, y, w, h):
 def screwOrBolt(img):
     if x >= 10 and y >=10:
         img = img[y-10:y+h+20, x-10:x+w+20]
-    corners = cv2.goodFeaturesToTrack(img, 20, 0.01, 5, useHarrisDetector=True, k=0.01)
+
+    corners = cv2.goodFeaturesToTrack(img, 10, 0.01, 5, useHarrisDetector=True, k=0.01)
     if corners is not None:
         corners = np.int0(corners) #float to integer
 
@@ -207,32 +211,21 @@ def screwOrBolt(img):
         slope_max = (second_max_coord[1]-max_coord[1]) / (second_max_coord[0]-max_coord[0]) 
         slope_min = (second_min_coord[1]-min_coord[1]) / (second_min_coord[0]-min_coord[0]) 
 
-        if slope_max == 0.0:
-            if abs(slope_min) < 0.5:
-                cv2.putText(imgContour, "Bolt", (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, 1,
-                            (0, 0, 0), 2)
-                return 3
-                # print("Bolt")
-        elif slope_min == 0.0:
-            if abs(slope_max) < 0.5:
-                cv2.putText(imgContour, "Bolt", (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, 1,
-                            (0, 0, 0), 2)
-                return 3
-                # print("Bolt")
+        # Compute the angle between the slopes in radians
+        angle = math.atan(abs(slope_max - slope_min) / (1 + slope_min * slope_max))
+
+        # Define the threshold angle in radians
+        threshold = 0.2
+
+        # Compare the angle to the threshold
+        if angle < threshold:
+            cv2.putText(imgContour, "Bolt", (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, 1,
+            (0, 0, 0), 2)
+            return 3
         else:
-            #use ratio
-            slope_ratio = abs(slope_max / slope_min)
-            # print(slope_ratio)
-            if 0.4 <= slope_ratio <= 2:
-                cv2.putText(imgContour, "Bolt", (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, 1,
+            cv2.putText(imgContour, "Screw", (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, 1,
                             (0, 0, 0), 2)
-                return 3
-                # print("Bolt")
-            else:
-                cv2.putText(imgContour, "Screw", (x + w + 20, y + 20), cv2.FONT_HERSHEY_COMPLEX, 1,
-                            (0, 0, 0), 2)
-                return 4
-                # print("Screw")
+            return 4
 
 while True:
     success, img = cap.read()
@@ -270,21 +263,35 @@ while True:
             newFastener = False
 
             # Save frame as image in specified folder
-            if frame_counter % 1 == 0: #this camera is 7.50fps
-            #     print("pic")
-            #     filename = os.path.join(folder_path, f'image_{img_counter}.jpg')
-            # time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                # filename = time + '.jpg'
-            #     # print("writing")
-            #     cv2.imwrite(filename, img)
-            #      file = open(time + '.txt', "w")
-            #   file.write("Hello, world!")
-                #file.close()
+            if frame_counter % 2 == 0: #this camera is 7.50fps
 
                 isWasherOrNut, fastener = washerOrNut(imgDil, contours, x, y, w, h)
 
                 if isWasherOrNut is None:
+                    # # Find the minimum area rectangle bounding the contour
+                    # rect = cv2.minAreaRect(contours)
+
+                    # # Determine the angle needed to straighten the object
+                    # angle = rect[2]
+
+                    # # Rotate the image by the calculated angle
+                    # rows, cols = img.shape[:2]
+                    # M = cv2.getRotationMatrix2D((cols/2, rows/2), angle, 1)
+                    # imgRotated = cv2.warpAffine(img, M, (cols, rows), flags=cv2.INTER_CUBIC)
+
                     fastener = screwOrBolt(imgDil)
+                
+                current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                filename = os.path.join(folder_path, f"{current_time}.jpg")
+                cv2.imwrite(filename, img)
+                # x_center = x + w/2
+                # y_center = y + h/2
+                x_center = (x - 10) + (w + 20)/2
+                y_center = (y - 10) + (h + 20)/2
+                file = open(filename + '.txt', "w")
+                #0.65 is for resizing your images to 416x416 and the original image size is 640x480, so the resize ratio is 416/640=0.65
+                file.write(str(fastener) + ' ' + str(round((x_center * 0.65), 6)) + ' ' + str(round((y_center * 0.65), 6)) + ' ' + str(round((w * 0.65), 6)) + ' ' + str(round((h * 0.65), 6)))
+                file.close()
 
                 if fastener is not None:
                     results.append(fastener)
@@ -305,9 +312,9 @@ while True:
                         final_result = "Nut"
                     elif majority[0][0] == 1:
                         final_result = "Washer"
-                    elif majority[0][0] == 2:
-                        final_result = "Bolt"
                     elif majority[0][0] == 3:
+                        final_result = "Bolt"
+                    elif majority[0][0] == 4:
                         final_result = "Screw"
 
             if final_result != "":
@@ -319,7 +326,7 @@ while True:
             newFastener = True 
             #QUESTION: Why does it quit?
 
-    imgStack = stackImages(0.8, ([img, imgGray, imgCanny], [imgRange, imgContour, imgResult]))
+    imgStack = stackImages(0.8, ([img, imgGray, imgCanny], [imgRange, imgContour, imgDil]))
 
     cv2.imshow("Results", imgStack)
     if cv2.waitKey(1) & 0xFF == ord ('q'):
