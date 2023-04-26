@@ -12,7 +12,7 @@ frameHeight = 480
 cap = cv2.VideoCapture(0)
 cap.set(3, frameWidth)
 cap.set(4, frameHeight)
-folder_path = '/Users/yukaaoyama/engi200/images/training'
+folder_path = '/Users/yukaaoyama/engi200/images/training2'
 if not os.path.exists(folder_path):
     os.makedirs(folder_path)
 # initialize frame and image counter
