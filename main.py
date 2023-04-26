@@ -12,9 +12,9 @@ frameHeight = 480
 cap = cv2.VideoCapture(0)
 cap.set(3, frameWidth)
 cap.set(4, frameHeight)
-folder_path = '/Users/yukaaoyama/engi200/images/training2'
-if not os.path.exists(folder_path):
-    os.makedirs(folder_path)
+# folder_path = '/Users/yukaaoyama/engi200/images/training2'
+# if not os.path.exists(folder_path):
+#     os.makedirs(folder_path)
 # initialize frame and image counter
 frame_counter = 0
 
@@ -281,17 +281,15 @@ while True:
 
                     fastener = screwOrBolt(imgDil)
                 
-                current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                filename = os.path.join(folder_path, f"{current_time}.jpg")
-                cv2.imwrite(filename, img)
-                # x_center = x + w/2
-                # y_center = y + h/2
-                x_center = (x - 10) + (w + 20)/2
-                y_center = (y - 10) + (h + 20)/2
-                file = open(filename + '.txt', "w")
-                #0.65 is for resizing your images to 416x416 and the original image size is 640x480, so the resize ratio is 416/640=0.65
-                file.write(str(fastener) + ' ' + str(round((x_center * 0.65), 6)) + ' ' + str(round((y_center * 0.65), 6)) + ' ' + str(round((w * 0.65), 6)) + ' ' + str(round((h * 0.65), 6)))
-                file.close()
+                # current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                # filename = os.path.join(folder_path, f"{current_time}.jpg")
+                # cv2.imwrite(filename, img)
+                # x_center = (x - 10) + (w + 20)/2
+                # y_center = (y - 10) + (h + 20)/2
+                # file = open(filename + '.txt', "w")
+                # #0.65 is for resizing your images to 416x416 and the original image size is 640x480, so the resize ratio is 416/640=0.65
+                # file.write(str(fastener) + ' ' + str(round((x_center * 0.65), 6)) + ' ' + str(round((y_center * 0.65), 6)) + ' ' + str(round((w * 0.65), 6)) + ' ' + str(round((h * 0.65), 6)))
+                # file.close()
 
                 if fastener is not None:
                     results.append(fastener)
